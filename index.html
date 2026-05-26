@@ -222,33 +222,157 @@ const EXERCISES = {
 
   // ── CARDIO ───────────────────────────────────────────────────────────────
   treadmill_walk: {
-    id:"treadmill_walk", name:"Treadmill Walk (incline)", muscles:["cardio","glutes","calves"],
+    id:"treadmill_walk", name:"Treadmill Walk (Incline)", muscles:["cardio","glutes","calves"],
     equipment:["treadmill"], type:"time", defaultSecs:600,
     drSafe:true, drPhase:1, category:"cardio",
     note:"10–12% incline, 3–4mph. Burns calories without impact. Excellent glute activation.",
   },
+  treadmill_intervals: {
+    id:"treadmill_intervals", name:"Treadmill Intervals", muscles:["cardio"],
+    equipment:["treadmill"], type:"time", defaultSecs:1200,
+    drSafe:true, drPhase:2, category:"cardio",
+    note:"1 min fast walk / 1 min slow. 10–15% incline on fast intervals. No running needed.",
+  },
   treadmill_jog: {
     id:"treadmill_jog", name:"Treadmill Jog", muscles:["cardio"],
-    equipment:["treadmill"], type:"time", defaultSecs:600,
+    equipment:["treadmill"], type:"time", defaultSecs:1200,
     drSafe:true, drPhase:3, category:"cardio",
-    note:"Only when DR is healed. Start at comfortable pace. No bouncing.",
+    note:"Only when DR is healed and physio cleared. Start at comfortable pace.",
+  },
+  treadmill_run: {
+    id:"treadmill_run", name:"Treadmill Run", muscles:["cardio"],
+    equipment:["treadmill"], type:"time", defaultSecs:1800,
+    drSafe:true, drPhase:3, category:"cardio",
+    note:"Full running pace. Phase 3 only — pelvic floor must be fully recovered.",
   },
   stationary_bike: {
-    id:"stationary_bike", name:"Stationary Bike", muscles:["cardio","quads","glutes"],
-    equipment:["bike"], type:"time", defaultSecs:600,
+    id:"stationary_bike", name:"Stationary Bike (Steady)", muscles:["cardio","quads","glutes"],
+    equipment:["bike"], type:"time", defaultSecs:1200,
     drSafe:true, drPhase:1, category:"cardio",
-    note:"Low impact. Great for all DR phases. Moderate resistance.",
+    note:"Moderate resistance, steady pace. Safest cardio for all DR phases.",
+  },
+  bike_intervals: {
+    id:"bike_intervals", name:"Stationary Bike (Intervals)", muscles:["cardio","quads","glutes"],
+    equipment:["bike"], type:"time", defaultSecs:1200,
+    drSafe:true, drPhase:1, category:"cardio",
+    note:"30s hard / 90s easy. Repeat. Excellent calorie burn with zero impact.",
+  },
+  spin_class: {
+    id:"spin_class", name:"Spin / Cycling Class", muscles:["cardio","quads","glutes","calves"],
+    equipment:["bike"], type:"time", defaultSecs:2700,
+    drSafe:true, drPhase:2, category:"cardio",
+    note:"High energy cycling. Phase 2+ — avoid heavy standing climbs until core is stable.",
   },
   elliptical: {
-    id:"elliptical", name:"Elliptical", muscles:["cardio","full_body"],
-    equipment:["elliptical"], type:"time", defaultSecs:600,
+    id:"elliptical", name:"Elliptical (Steady)", muscles:["cardio","full_body"],
+    equipment:["elliptical"], type:"time", defaultSecs:1200,
     drSafe:true, drPhase:2, category:"cardio",
+    note:"Low impact full body. Great transition from walking to more intense cardio.",
+  },
+  elliptical_intervals: {
+    id:"elliptical_intervals", name:"Elliptical (Intervals)", muscles:["cardio","full_body"],
+    equipment:["elliptical"], type:"time", defaultSecs:1200,
+    drSafe:true, drPhase:2, category:"cardio",
+    note:"Alternate resistance every 2 minutes. Arms active throughout.",
+  },
+  rowing_machine: {
+    id:"rowing_machine", name:"Rowing Machine", muscles:["cardio","back","legs","core"],
+    equipment:["rower"], type:"time", defaultSecs:1200,
+    drSafe:true, drPhase:2, category:"cardio",
+    note:"Drive with legs first, then lean back, then pull arms. Full body — builds real strength alongside cardio.",
+    coachNote:"One of the best full-body cardio tools. Excellent posterior chain work.",
+  },
+  rowing_intervals: {
+    id:"rowing_intervals", name:"Rowing Intervals", muscles:["cardio","back","legs"],
+    equipment:["rower"], type:"time", defaultSecs:1200,
+    drSafe:true, drPhase:2, category:"cardio",
+    note:"500m hard / 1 min rest. Repeat 4–6 times. Powerful metabolic conditioning.",
+  },
+  stairmaster: {
+    id:"stairmaster", name:"StairMaster / StairClimber", muscles:["cardio","glutes","quads","calves"],
+    equipment:["stairmaster"], type:"time", defaultSecs:900,
+    drSafe:true, drPhase:2, category:"cardio",
+    note:"Don't lean on handles. Upright posture. Excellent glute and cardio combo.",
+    coachNote:"One of the best glute + cardio tools in the gym.",
+  },
+  stair_intervals: {
+    id:"stair_intervals", name:"StairMaster Intervals", muscles:["cardio","glutes","quads"],
+    equipment:["stairmaster"], type:"time", defaultSecs:900,
+    drSafe:true, drPhase:2, category:"cardio",
+    note:"Alternate fast / slow speed every 2 minutes. Skip a step for more glute.",
+  },
+  swimming_laps: {
+    id:"swimming_laps", name:"Swimming Laps", muscles:["cardio","full_body","shoulders","core"],
+    equipment:["pool"], type:"time", defaultSecs:1800,
+    drSafe:true, drPhase:1, category:"cardio",
+    note:"Zero impact — best cardio for DR recovery. Freestyle or backstroke. Breathe rhythmically.",
+    coachNote:"Ideal post-partum cardio. Water supports the body, no pressure on the pelvic floor.",
+  },
+  swim_intervals: {
+    id:"swim_intervals", name:"Swim Intervals", muscles:["cardio","full_body","shoulders"],
+    equipment:["pool"], type:"time", defaultSecs:1800,
+    drSafe:true, drPhase:1, category:"cardio",
+    note:"2 laps hard / 1 lap easy. Rest 30s between sets. Builds VO2max with zero joint impact.",
+  },
+  water_walking: {
+    id:"water_walking", name:"Water Walking / Aqua Jogging", muscles:["cardio","legs","core"],
+    equipment:["pool"], type:"time", defaultSecs:1200,
+    drSafe:true, drPhase:1, category:"cardio",
+    note:"Walk or jog in chest-deep water. Zero impact. Perfect for Phase 1 DR recovery.",
+  },
+  outdoor_walk: {
+    id:"outdoor_walk", name:"Outdoor Walk", muscles:["cardio","legs"],
+    equipment:["bodyweight"], type:"time", defaultSecs:1800,
+    drSafe:true, drPhase:1, category:"cardio",
+    note:"Brisk pace. Use hills where possible. Best low-impact daily habit.",
+  },
+  outdoor_run: {
+    id:"outdoor_run", name:"Outdoor Run", muscles:["cardio"],
+    equipment:["bodyweight"], type:"time", defaultSecs:1800,
+    drSafe:true, drPhase:3, category:"cardio",
+    note:"Phase 3 only. Build up gradually — run/walk intervals first.",
   },
   jump_rope: {
-    id:"jump_rope", name:"Jump Rope", muscles:["cardio","calves"],
-    equipment:["jump_rope"], type:"time", defaultSecs:180,
+    id:"jump_rope", name:"Jump Rope", muscles:["cardio","calves","shoulders"],
+    equipment:["jump_rope"], type:"time", defaultSecs:600,
     drSafe:false, drPhase:3, category:"cardio",
-    note:"Only when fully cleared by physio. High impact — requires full pelvic floor recovery.",
+    note:"High impact — requires full pelvic floor recovery. Physio clearance needed.",
+  },
+  battle_ropes: {
+    id:"battle_ropes", name:"Battle Ropes", muscles:["cardio","shoulders","arms","core"],
+    equipment:["battle_ropes"], type:"time", defaultSecs:300,
+    drSafe:true, drPhase:2, category:"cardio",
+    note:"30s waves / 30s rest. Upper body dominant — safe for DR when core is braced.",
+  },
+  sled_push: {
+    id:"sled_push", name:"Sled Push", muscles:["cardio","legs","glutes","shoulders"],
+    equipment:["sled"], type:"reps", defaultReps:6,
+    drSafe:true, drPhase:3, category:"cardio",
+    note:"10–15m per rep. Lean forward 45°. Powerful full body conditioning.",
+  },
+  assault_bike: {
+    id:"assault_bike", name:"Assault Bike", muscles:["cardio","full_body"],
+    equipment:["assault_bike"], type:"time", defaultSecs:600,
+    drSafe:true, drPhase:2, category:"cardio",
+    note:"Arms and legs together. 20s hard / 40s easy. Brutal but effective.",
+  },
+  ski_erg: {
+    id:"ski_erg", name:"Ski Erg", muscles:["cardio","back","core","shoulders"],
+    equipment:["ski_erg"], type:"time", defaultSecs:900,
+    drSafe:true, drPhase:2, category:"cardio",
+    note:"Standing. Pull ropes down with both arms. Low impact, high output.",
+  },
+  versa_climber: {
+    id:"versa_climber", name:"VersaClimber", muscles:["cardio","full_body"],
+    equipment:["versa_climber"], type:"time", defaultSecs:600,
+    drSafe:true, drPhase:2, category:"cardio",
+    note:"Vertical climbing motion. Alternating arms and legs. Low impact, very high calorie burn.",
+  },
+  hiit_circuit: {
+    id:"hiit_circuit", name:"HIIT Circuit (Bodyweight)", muscles:["cardio","full_body"],
+    equipment:["bodyweight"], type:"time", defaultSecs:1200,
+    drSafe:true, drPhase:3, category:"cardio",
+    note:"Squats, step-ups, push-ups, band rows — 40s on / 20s off. Phase 3 only with stable core.",
   },
 
   // ── CALISTHENICS (DR-ADAPTED) ─────────────────────────────────────────────
@@ -297,6 +421,7 @@ const MUSCLE_GROUPS = [
   { id:"upper",     label:"Upper Body",  icon:"◆", color:"#7a9db5" },
   { id:"core",      label:"Core",        icon:"○", color:"#d4857a" },
   { id:"full_body", label:"Full Body",   icon:"✦", color:"#a882c9" },
+  { id:"cardio",    label:"Cardio",      icon:"♡", color:"#e88c6a" },
   { id:"calisthenics",label:"Calisthenics",icon:"∞", color:"#c9a23a" },
 ];
 
@@ -311,20 +436,37 @@ const DURATIONS = [
 function generateWorkout(muscleGroup, durationConfig, drPhase = 2) {
   const { sets, exercises: targetCount, cardioMins } = durationConfig;
 
+  // Standalone cardio session
+  if (muscleGroup === "cardio") {
+    const cardioPool = ALL_EX.filter(ex =>
+      ex.category === "cardio" && ex.drSafe && ex.drPhase <= drPhase
+    );
+    // Pick 2-3 cardio exercises, split time across them
+    const shuffled = [...cardioPool].sort(() => Math.random() - 0.5);
+    const count = durationConfig.mins <= 30 ? 1 : durationConfig.mins <= 45 ? 2 : 3;
+    const secsEach = Math.floor((durationConfig.mins * 60) / count);
+    const selected = shuffled.slice(0, count).map(ex => ({
+      ...ex,
+      workoutSets: 1,
+      workoutReps: null,
+      workoutSecs: secsEach,
+      workoutWeight: 0,
+    }));
+    return { exercises: selected, cardio: null, muscleGroup, duration: durationConfig.mins };
+  }
+
   // Filter exercises by muscle group and DR phase
   let pool = ALL_EX.filter(ex =>
     ex.drSafe && ex.drPhase <= drPhase && ex.category !== "cardio"
   );
 
   if (muscleGroup === "full_body") {
-    // Balance across all muscle groups
     const groups = ["glutes","legs","upper","core"];
     let selected = [];
     groups.forEach(g => {
       const gPool = pool.filter(ex => ex.category === g || ex.muscles.includes(g));
       if (gPool.length) selected.push(gPool[Math.floor(Math.random()*gPool.length)]);
     });
-    // Fill remaining slots
     const remaining = pool.filter(ex => !selected.find(s => s.id === ex.id));
     while (selected.length < targetCount && remaining.length > 0) {
       const idx = Math.floor(Math.random()*remaining.length);
@@ -334,7 +476,6 @@ function generateWorkout(muscleGroup, durationConfig, drPhase = 2) {
   } else if (muscleGroup === "calisthenics") {
     pool = pool.filter(ex => ex.category === "calisthenics" || ex.category === "core" || ex.category === "glutes");
   } else {
-    // For specific muscle groups, include core always
     const primary = pool.filter(ex =>
       ex.category === muscleGroup || ex.muscles.some(m => m.includes(muscleGroup))
     );
@@ -344,7 +485,6 @@ function generateWorkout(muscleGroup, durationConfig, drPhase = 2) {
     pool = combined;
   }
 
-  // Select exercises
   const selected = [];
   const shuffled = [...pool].sort(() => Math.random() - 0.5);
   for (const ex of shuffled) {
@@ -352,7 +492,7 @@ function generateWorkout(muscleGroup, durationConfig, drPhase = 2) {
     if (!selected.find(s => s.id === ex.id)) selected.push(ex);
   }
 
-  // Add cardio at start (warm-up) or end
+  // Add cardio warm-up for non-cardio workouts
   const cardioOptions = ALL_EX.filter(ex => ex.category === "cardio" && ex.drSafe && ex.drPhase <= drPhase);
   const cardioEx = cardioOptions[Math.floor(Math.random() * cardioOptions.length)];
 
@@ -830,7 +970,7 @@ function WorkoutGeneratorView({ workoutLog, setWorkoutLog, drPhase }) {
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
             <div>
               <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:26, fontWeight:600, color:C.text, lineHeight:1 }}>
-                {group?.label} Day
+                {muscleGroup === "cardio" ? "Cardio Session" : `${group?.label} Day`}
               </div>
               <div style={{ fontSize:11, color:C.textSoft, marginTop:4, letterSpacing:1,
                 fontFamily:"'DM Sans',sans-serif" }}>
