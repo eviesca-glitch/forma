@@ -978,6 +978,7 @@ function WorkoutGeneratorView({ workoutLog, setWorkoutLog, drPhase }) {
       );
     }
     return (
+      <div style={{ paddingBottom:90 }}>
         {/* Workout header */}
         <div style={{ padding:"16px 18px 14px", borderBottom:`1px solid ${C.border}` }}>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
@@ -1467,7 +1468,4 @@ function App() {
 }
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(React.createElement(App));
-  </script>
-</body>
-</html>
+    root.render(React.createEl
