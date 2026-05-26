@@ -1,0 +1,1320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Forma" />
+  <meta name="theme-color" content="#faf7f2" />
+  <title>Forma</title>
+  <script>
+    const manifest = {
+      name:"Forma",short_name:"Forma",description:"Your personal training companion",
+      start_url:"./",display:"standalone",background_color:"#faf7f2",theme_color:"#faf7f2",orientation:"portrait",
+      icons:[{src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%23c9a882'/%3E%3Ctext x='256' y='340' font-family='Georgia,serif' font-size='260' font-weight='700' fill='%23faf7f2' text-anchor='middle'%3EF%3C/text%3E%3C/svg%3E",sizes:"512x512",type:"image/svg+xml",purpose:"any maskable"}]
+    };
+    const blob=new Blob([JSON.stringify(manifest)],{type:'application/json'});
+    const link=document.createElement('link');link.rel='manifest';link.href=URL.createObjectURL(blob);
+    document.currentScript.parentNode.appendChild(link);
+  </script>
+  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%23c9a882'/%3E%3Ctext x='256' y='340' font-family='Georgia,serif' font-size='260' font-weight='700' fill='%23faf7f2' text-anchor='middle'%3EF%3C/text%3E%3C/svg%3E" />
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.23.9/babel.min.js"></script>
+  <style>
+    html,body{margin:0;padding:0;background:#faf7f2;}
+    #root{min-height:100svh;}
+    @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel" data-presets="react">
+    const { useState, useEffect, useCallback, useMemo, useRef } = React;
+
+// ─── DESIGN TOKENS ────────────────────────────────────────────────────────────
+const C = {
+  bg:       "#faf7f2",
+  surface:  "#f4efe6",
+  card:     "#ffffff",
+  border:   "#e8dfd0",
+  text:     "#2c2316",
+  textSoft: "#8c7a6a",
+  textMid:  "#5a4a3a",
+  gold:     "#c9a882",
+  goldDark: "#a8855e",
+  sage:     "#7a9e7e",
+  rose:     "#d4857a",
+  sky:      "#7a9db5",
+  warn:     "#c9a23a",
+};
+
+// ─── EXERCISE LIBRARY ─────────────────────────────────────────────────────────
+// drSafe: true = safe for diastasis recti
+// drPhase: 1=early recovery, 2=intermediate, 3=advanced
+// muscles: primary muscle groups
+// equipment: what's needed
+
+const EXERCISES = {
+  // ── CORE (DR-SAFE PROGRESSIONS) ──────────────────────────────────────────
+  diaphragmatic_breath: {
+    id:"diaphragmatic_breath", name:"Diaphragmatic Breathing", muscles:["core","pelvic_floor"],
+    equipment:["bodyweight"], type:"time", defaultSecs:60, sets:3,
+    drSafe:true, drPhase:1, category:"core",
+    note:"Lie on back. Breathe deep into belly — ribs expand 360°. Exhale fully. This activates the deep core system.",
+    coachNote:"Foundation of DR recovery. Must master before any other core work.",
+  },
+  dead_bug: {
+    id:"dead_bug", name:"Dead Bug", muscles:["core","transverse_abdominis"],
+    equipment:["bodyweight"], type:"reps", defaultReps:8, sets:3,
+    drSafe:true, drPhase:1, category:"core",
+    note:"Lower back pressed firmly into floor. Opposite arm/leg extend slowly. No doming at midline.",
+    coachNote:"The single best DR-safe core exercise. Check for doming — if midline rises, regress.",
+    progressions:["Heel slides first","Dead bug with bent knee","Dead bug full extension","Add resistance band"],
+  },
+  heel_slides: {
+    id:"heel_slides", name:"Heel Slides", muscles:["core","pelvic_floor"],
+    equipment:["bodyweight"], type:"reps", defaultReps:10, sets:3,
+    drSafe:true, drPhase:1, category:"core",
+    note:"Lie on back, knees bent. Slide one heel out slowly while bracing deep core. Back stays flat.",
+  },
+  bird_dog: {
+    id:"bird_dog", name:"Bird Dog", muscles:["core","glutes","back"],
+    equipment:["bodyweight"], type:"reps", defaultReps:8, sets:3,
+    drSafe:true, drPhase:1, category:"core",
+    note:"On hands and knees. Extend opposite arm and leg. Hold 2s. Spine neutral throughout.",
+  },
+  pallof_press: {
+    id:"pallof_press", name:"Pallof Press", muscles:["core","obliques"],
+    equipment:["cable","resistance_band"], type:"reps", defaultReps:10, sets:3,
+    drSafe:true, drPhase:2, category:"core",
+    note:"Cable at chest height. Press straight out, hold 2s, return. Anti-rotation — core stays braced.",
+    coachNote:"Best DR-safe standing core exercise. Builds real functional strength.",
+  },
+  glute_bridge: {
+    id:"glute_bridge", name:"Glute Bridge", muscles:["glutes","core","hamstrings"],
+    equipment:["bodyweight"], type:"reps", defaultReps:15, sets:3,
+    drSafe:true, drPhase:1, category:"glutes",
+    note:"Feet hip-width, drive through heels. Squeeze glutes at top. Hold 2s.",
+    progressions:["Bodyweight","Single leg","With barbell","Hip thrust on bench"],
+  },
+  single_leg_glute_bridge: {
+    id:"single_leg_glute_bridge", name:"Single-Leg Glute Bridge", muscles:["glutes","core","hamstrings"],
+    equipment:["bodyweight"], type:"reps", defaultReps:12, sets:3,
+    drSafe:true, drPhase:2, category:"glutes",
+    note:"One leg extended. Drive through heel on working leg. Keep hips level.",
+  },
+  hip_thrust: {
+    id:"hip_thrust", name:"Hip Thrust", muscles:["glutes","hamstrings"],
+    equipment:["barbell","bench"], type:"reps", defaultReps:12, sets:4,
+    drSafe:true, drPhase:3, category:"glutes",
+    note:"Upper back on bench. Barbell across hips. Full hip extension at top. Powerhouse glute builder.",
+    coachNote:"Most effective glute exercise in existence. Build to heavy loads over time.",
+  },
+
+  // ── LOWER BODY ───────────────────────────────────────────────────────────
+  goblet_squat: {
+    id:"goblet_squat", name:"Goblet Squat", muscles:["quads","glutes","core"],
+    equipment:["dumbbell"], type:"reps", defaultReps:12, sets:3, defaultWeight:10,
+    drSafe:true, drPhase:2, category:"legs",
+    note:"Dumbbell at chest. Elbows inside knees at bottom. Chest tall.",
+  },
+  romanian_deadlift: {
+    id:"romanian_deadlift", name:"Romanian Deadlift", muscles:["hamstrings","glutes","back"],
+    equipment:["dumbbell","barbell"], type:"reps", defaultReps:10, sets:3, defaultWeight:15,
+    drSafe:true, drPhase:2, category:"legs",
+    note:"Hinge at hips, soft knee bend. Bar/dumbbells trail down legs. Feel hamstring stretch.",
+    coachNote:"Excellent posterior chain builder — safe for DR when core is braced.",
+  },
+  sumo_squat: {
+    id:"sumo_squat", name:"Sumo Squat", muscles:["glutes","inner_thigh","quads"],
+    equipment:["dumbbell","barbell"], type:"reps", defaultReps:12, sets:3, defaultWeight:12,
+    drSafe:true, drPhase:2, category:"legs",
+    note:"Wide stance, toes out. Dumbbell between legs. Knees track over toes.",
+  },
+  reverse_lunge: {
+    id:"reverse_lunge", name:"Reverse Lunge", muscles:["quads","glutes","hamstrings"],
+    equipment:["dumbbell","bodyweight"], type:"reps", defaultReps:10, sets:3, defaultWeight:8,
+    drSafe:true, drPhase:2, category:"legs",
+    note:"Step back, not forward. Front knee stays over ankle. More controlled than forward lunge.",
+  },
+  leg_press: {
+    id:"leg_press", name:"Leg Press", muscles:["quads","glutes"],
+    equipment:["machine"], type:"reps", defaultReps:12, sets:3, defaultWeight:50,
+    drSafe:true, drPhase:2, category:"legs",
+  },
+  leg_curl: {
+    id:"leg_curl", name:"Leg Curl (Machine)", muscles:["hamstrings"],
+    equipment:["machine"], type:"reps", defaultReps:12, sets:3, defaultWeight:30,
+    drSafe:true, drPhase:2, category:"legs",
+  },
+  calf_raise: {
+    id:"calf_raise", name:"Calf Raises", muscles:["calves"],
+    equipment:["machine","bodyweight"], type:"reps", defaultReps:15, sets:3,
+    drSafe:true, drPhase:1, category:"legs",
+  },
+  cable_kickback: {
+    id:"cable_kickback", name:"Cable Glute Kickback", muscles:["glutes"],
+    equipment:["cable"], type:"reps", defaultReps:15, sets:3,
+    drSafe:true, drPhase:2, category:"glutes",
+    note:"Ankle attachment. Slight forward lean. Squeeze glute fully at top. Controlled return.",
+  },
+  cable_abduction: {
+    id:"cable_abduction", name:"Cable Hip Abduction", muscles:["glutes","hip_abductors"],
+    equipment:["cable"], type:"reps", defaultReps:15, sets:3,
+    drSafe:true, drPhase:2, category:"glutes",
+  },
+
+  // ── UPPER BODY ───────────────────────────────────────────────────────────
+  db_chest_press: {
+    id:"db_chest_press", name:"DB Chest Press", muscles:["chest","triceps","shoulders"],
+    equipment:["dumbbell","bench"], type:"reps", defaultReps:12, sets:3, defaultWeight:10,
+    drSafe:true, drPhase:2, category:"upper",
+    note:"Feet on floor, slight arch. Lower to chest level. Press up and in.",
+  },
+  db_row: {
+    id:"db_row", name:"Single-Arm DB Row", muscles:["back","biceps"],
+    equipment:["dumbbell","bench"], type:"reps", defaultReps:12, sets:3, defaultWeight:12,
+    drSafe:true, drPhase:2, category:"upper",
+    note:"Flat back. Pull elbow to hip, not straight up. Feel lat engage.",
+  },
+  cable_row: {
+    id:"cable_row", name:"Seated Cable Row", muscles:["back","biceps","rear_delt"],
+    equipment:["cable"], type:"reps", defaultReps:12, sets:3, defaultWeight:30,
+    drSafe:true, drPhase:2, category:"upper",
+    note:"Upright torso. Pull to lower chest. Squeeze shoulder blades together.",
+  },
+  lat_pulldown: {
+    id:"lat_pulldown", name:"Lat Pulldown", muscles:["back","biceps"],
+    equipment:["cable"], type:"reps", defaultReps:12, sets:3, defaultWeight:35,
+    drSafe:true, drPhase:2, category:"upper",
+    note:"Slight lean back. Pull bar to upper chest. Elbows drive down and back.",
+  },
+  db_shoulder_press: {
+    id:"db_shoulder_press", name:"DB Shoulder Press", muscles:["shoulders","triceps"],
+    equipment:["dumbbell"], type:"reps", defaultReps:12, sets:3, defaultWeight:8,
+    drSafe:true, drPhase:2, category:"upper",
+  },
+  lateral_raise: {
+    id:"lateral_raise", name:"Lateral Raises", muscles:["shoulders"],
+    equipment:["dumbbell","cable"], type:"reps", defaultReps:15, sets:3, defaultWeight:5,
+    drSafe:true, drPhase:2, category:"upper",
+    note:"Slight forward lean. Lead with elbows. Stop at shoulder height.",
+  },
+  bicep_curl: {
+    id:"bicep_curl", name:"Bicep Curls", muscles:["biceps"],
+    equipment:["dumbbell","cable"], type:"reps", defaultReps:12, sets:3, defaultWeight:8,
+    drSafe:true, drPhase:2, category:"upper",
+  },
+  tricep_pushdown: {
+    id:"tricep_pushdown", name:"Tricep Pushdown", muscles:["triceps"],
+    equipment:["cable"], type:"reps", defaultReps:12, sets:3,
+    drSafe:true, drPhase:2, category:"upper",
+  },
+  face_pull: {
+    id:"face_pull", name:"Face Pull", muscles:["rear_delt","rotator_cuff","upper_back"],
+    equipment:["cable","resistance_band"], type:"reps", defaultReps:15, sets:3,
+    drSafe:true, drPhase:2, category:"upper",
+    note:"Rope attachment at forehead height. Pull to face, elbows high. Excellent posture builder.",
+    coachNote:"Essential for shoulder health, especially postpartum. Do this every upper session.",
+  },
+
+  // ── CARDIO ───────────────────────────────────────────────────────────────
+  treadmill_walk: {
+    id:"treadmill_walk", name:"Treadmill Walk (incline)", muscles:["cardio","glutes","calves"],
+    equipment:["treadmill"], type:"time", defaultSecs:600,
+    drSafe:true, drPhase:1, category:"cardio",
+    note:"10–12% incline, 3–4mph. Burns calories without impact. Excellent glute activation.",
+  },
+  treadmill_jog: {
+    id:"treadmill_jog", name:"Treadmill Jog", muscles:["cardio"],
+    equipment:["treadmill"], type:"time", defaultSecs:600,
+    drSafe:true, drPhase:3, category:"cardio",
+    note:"Only when DR is healed. Start at comfortable pace. No bouncing.",
+  },
+  stationary_bike: {
+    id:"stationary_bike", name:"Stationary Bike", muscles:["cardio","quads","glutes"],
+    equipment:["bike"], type:"time", defaultSecs:600,
+    drSafe:true, drPhase:1, category:"cardio",
+    note:"Low impact. Great for all DR phases. Moderate resistance.",
+  },
+  elliptical: {
+    id:"elliptical", name:"Elliptical", muscles:["cardio","full_body"],
+    equipment:["elliptical"], type:"time", defaultSecs:600,
+    drSafe:true, drPhase:2, category:"cardio",
+  },
+  jump_rope: {
+    id:"jump_rope", name:"Jump Rope", muscles:["cardio","calves"],
+    equipment:["jump_rope"], type:"time", defaultSecs:180,
+    drSafe:false, drPhase:3, category:"cardio",
+    note:"Only when fully cleared by physio. High impact — requires full pelvic floor recovery.",
+  },
+
+  // ── CALISTHENICS (DR-ADAPTED) ─────────────────────────────────────────────
+  wall_push_up: {
+    id:"wall_push_up", name:"Wall Push-Up", muscles:["chest","shoulders","triceps"],
+    equipment:["bodyweight"], type:"reps", defaultReps:15, sets:3,
+    drSafe:true, drPhase:1, category:"calisthenics",
+  },
+  incline_push_up: {
+    id:"incline_push_up", name:"Incline Push-Up", muscles:["chest","shoulders","triceps"],
+    equipment:["bodyweight","bench"], type:"reps", defaultReps:12, sets:3,
+    drSafe:true, drPhase:2, category:"calisthenics",
+    note:"Hands on bench. Full push-up pattern with less core demand. Great DR transition.",
+  },
+  modified_push_up: {
+    id:"modified_push_up", name:"Knee Push-Up", muscles:["chest","shoulders","triceps"],
+    equipment:["bodyweight"], type:"reps", defaultReps:12, sets:3,
+    drSafe:true, drPhase:2, category:"calisthenics",
+  },
+  bodyweight_squat: {
+    id:"bodyweight_squat", name:"Bodyweight Squat", muscles:["quads","glutes"],
+    equipment:["bodyweight"], type:"reps", defaultReps:15, sets:3,
+    drSafe:true, drPhase:1, category:"calisthenics",
+  },
+  step_up: {
+    id:"step_up", name:"Step-Ups", muscles:["quads","glutes"],
+    equipment:["bench","box"], type:"reps", defaultReps:12, sets:3,
+    drSafe:true, drPhase:2, category:"calisthenics",
+    note:"Drive through the heel of the elevated foot. Controlled descent.",
+  },
+  resistance_band_row: {
+    id:"resistance_band_row", name:"Band Pull-Apart", muscles:["upper_back","rear_delt"],
+    equipment:["resistance_band"], type:"reps", defaultReps:15, sets:3,
+    drSafe:true, drPhase:1, category:"calisthenics",
+    note:"Arms straight. Pull band apart at chest height. Excellent posture reset.",
+  },
+};
+
+const ALL_EX = Object.values(EXERCISES);
+
+// ─── WORKOUT GENERATOR ────────────────────────────────────────────────────────
+
+const MUSCLE_GROUPS = [
+  { id:"glutes",    label:"Glutes",      icon:"◉", color:"#c9a882" },
+  { id:"legs",      label:"Legs",        icon:"▲", color:"#7a9e7e" },
+  { id:"upper",     label:"Upper Body",  icon:"◆", color:"#7a9db5" },
+  { id:"core",      label:"Core",        icon:"○", color:"#d4857a" },
+  { id:"full_body", label:"Full Body",   icon:"✦", color:"#a882c9" },
+  { id:"calisthenics",label:"Calisthenics",icon:"∞", color:"#c9a23a" },
+];
+
+const DURATIONS = [
+  { mins:20, label:"20 min", sets:2, exercises:3, cardioMins:5 },
+  { mins:30, label:"30 min", sets:3, exercises:4, cardioMins:8 },
+  { mins:45, label:"45 min", sets:3, exercises:5, cardioMins:10 },
+  { mins:60, label:"60 min", sets:4, exercises:6, cardioMins:12 },
+  { mins:90, label:"90 min", sets:4, exercises:8, cardioMins:15 },
+];
+
+function generateWorkout(muscleGroup, durationConfig, drPhase = 2) {
+  const { sets, exercises: targetCount, cardioMins } = durationConfig;
+
+  // Filter exercises by muscle group and DR phase
+  let pool = ALL_EX.filter(ex =>
+    ex.drSafe && ex.drPhase <= drPhase && ex.category !== "cardio"
+  );
+
+  if (muscleGroup === "full_body") {
+    // Balance across all muscle groups
+    const groups = ["glutes","legs","upper","core"];
+    let selected = [];
+    groups.forEach(g => {
+      const gPool = pool.filter(ex => ex.category === g || ex.muscles.includes(g));
+      if (gPool.length) selected.push(gPool[Math.floor(Math.random()*gPool.length)]);
+    });
+    // Fill remaining slots
+    const remaining = pool.filter(ex => !selected.find(s => s.id === ex.id));
+    while (selected.length < targetCount && remaining.length > 0) {
+      const idx = Math.floor(Math.random()*remaining.length);
+      selected.push(remaining.splice(idx, 1)[0]);
+    }
+    pool = selected;
+  } else if (muscleGroup === "calisthenics") {
+    pool = pool.filter(ex => ex.category === "calisthenics" || ex.category === "core" || ex.category === "glutes");
+  } else {
+    // For specific muscle groups, include core always
+    const primary = pool.filter(ex =>
+      ex.category === muscleGroup || ex.muscles.some(m => m.includes(muscleGroup))
+    );
+    const core = pool.filter(ex => ex.category === "core").slice(0, 2);
+    const combined = [...primary];
+    core.forEach(c => { if (!combined.find(x => x.id === c.id)) combined.push(c); });
+    pool = combined;
+  }
+
+  // Select exercises
+  const selected = [];
+  const shuffled = [...pool].sort(() => Math.random() - 0.5);
+  for (const ex of shuffled) {
+    if (selected.length >= targetCount) break;
+    if (!selected.find(s => s.id === ex.id)) selected.push(ex);
+  }
+
+  // Add cardio at start (warm-up) or end
+  const cardioOptions = ALL_EX.filter(ex => ex.category === "cardio" && ex.drSafe && ex.drPhase <= drPhase);
+  const cardioEx = cardioOptions[Math.floor(Math.random() * cardioOptions.length)];
+
+  return {
+    exercises: selected.map(ex => ({
+      ...ex,
+      workoutSets: sets,
+      workoutReps: ex.defaultReps ?? null,
+      workoutSecs: ex.defaultSecs ?? null,
+      workoutWeight: ex.defaultWeight ?? 0,
+    })),
+    cardio: cardioEx ? { ...cardioEx, workoutSecs: cardioMins * 60 } : null,
+    muscleGroup,
+    duration: durationConfig.mins,
+  };
+}
+
+// ─── PROGRESS ENGINE ──────────────────────────────────────────────────────────
+
+function analyzeFormaProgress(workoutLog) {
+  const insights = [];
+  const exSessions = {};
+
+  for (const dt of Object.keys(workoutLog).sort()) {
+    const day = workoutLog[dt];
+    if (!day || typeof day !== "object") continue;
+    for (const [exId, sets] of Object.entries(day)) {
+      if (!Array.isArray(sets) || !sets.length) continue;
+      const meaningful = sets.filter(s => (s.reps??0)>0||(s.seconds??0)>0);
+      if (!meaningful.length) continue;
+      if (!exSessions[exId]) exSessions[exId] = [];
+      exSessions[exId].push({ date:dt, sets:meaningful });
+    }
+  }
+
+  const getBest = (id, type) => {
+    const s = exSessions[id];
+    if (!s?.length) return 0;
+    return Math.max(...s.flatMap(sess => sess.sets.map(set => type==="reps"?(set.reps??0):(set.seconds??0))));
+  };
+
+  const today = new Date();
+  const cutoff14 = new Date(today); cutoff14.setDate(cutoff14.getDate()-14);
+  const cutoff14Str = cutoff14.toISOString().split("T")[0];
+
+  // DR progress check
+  const deadBugBest = getBest("dead_bug","reps");
+  const bridgeBest = getBest("glute_bridge","reps");
+  const breathBest = getBest("diaphragmatic_breath","time");
+
+  if (breathBest >= 60 && deadBugBest >= 8 && bridgeBest >= 15) {
+    insights.push({
+      type:"milestone", color:C.sage,
+      title:"Phase 1 Core Complete",
+      message:"Breathing, dead bug, and glute bridge are all strong.",
+      action:"Ready for Phase 2: Pallof press, bird dog, and single-leg work. Your core foundation is solid.",
+    });
+  }
+
+  // Per-exercise progress
+  for (const [exId, sessions] of Object.entries(exSessions)) {
+    if (sessions.length < 2) continue;
+    const ex = ALL_EX.find(e => e.id === exId);
+    if (!ex) continue;
+
+    const recent = sessions.filter(s => s.date >= cutoff14Str).slice(-2);
+    const allBest = getBest(exId, ex.type==="time"?"time":"reps");
+    const tTarget = ex.type==="time" ? (ex.defaultSecs??0) : (ex.defaultReps??0);
+
+    if (recent.length === 2) {
+      const bothHit = recent.every(sess =>
+        sess.sets.every(s => ex.type==="time"?(s.seconds??0)>=tTarget:(s.reps??0)>=tTarget)
+      );
+      if (bothHit && tTarget > 0) {
+        const progressMap = {
+          glute_bridge:   "Progress to Single-Leg Glute Bridge. Then build to Hip Thrust — the most effective glute exercise.",
+          dead_bug:       "Add light ankle weight or extend hold time to 3s. Excellent core progress.",
+          bird_dog:       "Add a resistance band around wrists for more challenge.",
+          pallof_press:   "Increase cable weight by 2.5kg. Anti-rotation strength is building nicely.",
+          goblet_squat:   "Add 2kg. When 15 reps feel easy, progress to barbell back squat.",
+          romanian_deadlift: "Add 2.5kg each side. Focus on feeling the hamstring stretch — that's the signal.",
+          hip_thrust:     "Add 5kg. Hip thrust builds the glutes faster than any other exercise.",
+          db_chest_press: "Add 2kg each hand. Work toward 15 controlled reps.",
+          db_row:         "Add 2kg. Full range of motion — feel the lat engage at the top.",
+          lateral_raise:  "Add 1kg. Shoulders respond to high volume — keep reps at 15.",
+          face_pull:      "Increase reps to 20 or add light resistance. Shoulder health priority.",
+        };
+        insights.push({
+          type:"progress", color:C.gold,
+          exName: ex.name,
+          message:`Consistently hitting targets across 2 sessions.`,
+          action: progressMap[exId] ?? `Increase weight by 5–10% or add 2 reps next session`,
+        });
+      }
+    }
+
+    // Plateau check
+    const recent21 = sessions.filter(s => {
+      const c = new Date(today); c.setDate(c.getDate()-21);
+      return s.date >= c.toISOString().split("T")[0];
+    });
+    if (recent21.length >= 3 && allBest > 0) {
+      const r21Best = Math.max(...recent21.flatMap(s => s.sets.map(set => ex.type==="time"?(set.seconds??0):(set.reps??0))));
+      if (r21Best < allBest * 0.95) {
+        insights.push({
+          type:"plateau", color:C.warn,
+          exName: ex.name,
+          message:`No improvement in 3 weeks.`,
+          action:`Try dropping weight 10%, focus on slow 3s eccentric phase. New stimulus breaks plateaus.`,
+        });
+      }
+    }
+  }
+
+  // Sort milestones first
+  insights.sort((a,b) => {
+    const o = {milestone:0, progress:1, plateau:2};
+    return (o[a.type]??3)-(o[b.type]??3);
+  });
+  return insights;
+}
+
+// ─── LOCAL STORAGE ────────────────────────────────────────────────────────────
+
+function useLocalStorage(key, init) {
+  const [val, setVal] = useState(() => {
+    try {
+      const s = localStorage.getItem(key);
+      if (s) return JSON.parse(s);
+    } catch {}
+    // Cookie fallback for iOS PWA persistence
+    try {
+      const match = document.cookie.match(new RegExp("(?:^|; )" + key.replace(/[.*+?^${}()|[\]\\]/g,"\\$&") + "=([^;]*)"));
+      if (match) return JSON.parse(decodeURIComponent(match[1]));
+    } catch {}
+    return init;
+  });
+  const set = useCallback((v) => {
+    setVal(prev => {
+      const next = typeof v === "function" ? v(prev) : v;
+      try { localStorage.setItem(key, JSON.stringify(next)); } catch {}
+      try {
+        const encoded = encodeURIComponent(JSON.stringify(next));
+        document.cookie = `${key}=${encoded}; max-age=31536000; path=/; SameSite=Strict`;
+      } catch {}
+      return next;
+    });
+  }, [key]);
+  return [val, set];
+}
+
+// ─── DROPBOX SYNC ─────────────────────────────────────────────────────────────
+
+async function dropboxSave(token, data) {
+  const r = await fetch("https://content.dropboxapi.com/2/files/upload", {
+    method:"POST",
+    headers:{
+      "Authorization":"Bearer "+token,
+      "Dropbox-API-Arg":JSON.stringify({path:"/forma-backup.json",mode:"overwrite",autorename:false}),
+      "Content-Type":"application/octet-stream"
+    },
+    body:JSON.stringify(data)
+  });
+  return r.ok;
+}
+
+async function dropboxRestore(token) {
+  const r = await fetch("https://content.dropboxapi.com/2/files/download", {
+    method:"POST",
+    headers:{
+      "Authorization":"Bearer "+token,
+      "Dropbox-API-Arg":JSON.stringify({path:"/forma-backup.json"})
+    }
+  });
+  if (!r.ok) return null;
+  return r.json();
+}
+
+// ─── ATOMS ────────────────────────────────────────────────────────────────────
+
+function FCard({ children, style }) {
+  return (
+    <div style={{
+      background:C.card, borderRadius:18, padding:18,
+      border:`1px solid ${C.border}`, marginBottom:12,
+      boxShadow:"0 1px 4px rgba(44,35,22,0.06)", ...style
+    }}>{children}</div>
+  );
+}
+
+function FLabel({ children, color }) {
+  return (
+    <div style={{
+      fontSize:10, fontWeight:600, letterSpacing:2.5,
+      color: color??C.textSoft, marginBottom:8,
+      fontFamily:"'DM Sans',sans-serif", textTransform:"uppercase"
+    }}>{children}</div>
+  );
+}
+
+function FButton({ children, onClick, variant="primary", color, style }) {
+  const bg = variant==="primary" ? (color??C.gold) : "transparent";
+  const tc = variant==="primary" ? "#fff" : (color??C.gold);
+  const border = variant==="outline" ? `1.5px solid ${color??C.gold}` : "none";
+  return (
+    <button onClick={onClick} style={{
+      background:bg, color:tc, border, borderRadius:12,
+      padding:"12px 20px", fontSize:14, fontWeight:600,
+      cursor:"pointer", fontFamily:"'DM Sans',sans-serif",
+      transition:"opacity 0.15s", ...style
+    }}>{children}</button>
+  );
+}
+
+function ProgressDots({ value, onChange, color, max=10 }) {
+  return (
+    <div style={{ display:"flex", gap:5 }}>
+      {Array.from({length:max},(_,i) => (
+        <button key={i} onClick={()=>onChange(i+1)} style={{
+          width:20, height:20, borderRadius:"50%", border:"none", cursor:"pointer",
+          background: i<value ? (color??C.gold) : C.border,
+          transition:"background 0.1s", flexShrink:0
+        }} />
+      ))}
+    </div>
+  );
+}
+
+function FProgressBar({ pct, color }) {
+  const safe = isNaN(pct)||!isFinite(pct)?0:Math.min(Math.max(pct,0),100);
+  return (
+    <div style={{ background:C.surface, borderRadius:6, height:5, overflow:"hidden" }}>
+      <div style={{ width:`${safe}%`, height:"100%", background:color??C.gold, borderRadius:6, transition:"width 0.4s" }} />
+    </div>
+  );
+}
+
+// ─── WORKOUT SET LOGGER ───────────────────────────────────────────────────────
+
+function FStepper({ value, onChange, step=1, min=0, color }) {
+  const [raw, setRaw] = useState(value===0?"":String(value));
+  const isFocused = useRef(false);
+  useEffect(() => { if (!isFocused.current) setRaw(value===0?"":String(value)); }, [value]);
+  const commit = str => {
+    const n = parseFloat(str);
+    const valid = !isNaN(n) && n>=min;
+    const next = valid?parseFloat(n.toFixed(2)):min;
+    onChange(next); setRaw(next===0?"":String(next));
+  };
+  const nudge = dir => {
+    const next = Math.max(min, parseFloat(((value||0)+dir*step).toFixed(2)));
+    onChange(next);
+  };
+  return (
+    <div style={{ display:"flex", alignItems:"center", background:C.surface, borderRadius:12, overflow:"hidden" }}>
+      <button onMouseDown={e=>{e.preventDefault();nudge(-1);}}
+        style={{ width:44,height:48,background:"none",border:"none",color:C.textSoft,fontSize:22,cursor:"pointer" }}>−</button>
+      <input type="number" value={raw} placeholder="0"
+        onFocus={e=>{isFocused.current=true;e.target.select();}}
+        onChange={e=>setRaw(e.target.value)}
+        onBlur={e=>{isFocused.current=false;commit(e.target.value);}}
+        onKeyDown={e=>{if(e.key==="Enter")commit(raw);}}
+        style={{ flex:1,height:48,background:"none",border:"none",color:C.text,
+          fontSize:20,fontWeight:600,textAlign:"center",outline:"none",fontFamily:"'DM Sans',sans-serif"
+        }}
+      />
+      <button onMouseDown={e=>{e.preventDefault();nudge(1);}}
+        style={{ width:44,height:48,background:"none",border:"none",color:color??C.gold,fontSize:22,cursor:"pointer" }}>+</button>
+    </div>
+  );
+}
+
+function ExerciseLogger({ ex, sets, onUpdate, color }) {
+  const isTime = ex.type === "time";
+  const tReps = ex.workoutReps ?? ex.defaultReps ?? 0;
+  const tSecs = ex.workoutSecs ?? ex.defaultSecs ?? 0;
+  const tSets = ex.workoutSets ?? ex.sets ?? 3;
+  const hasWeight = (ex.workoutWeight ?? ex.defaultWeight ?? 0) > 0 ||
+    (ex.equipment?.includes("dumbbell") || ex.equipment?.includes("barbell") ||
+     ex.equipment?.includes("cable") || ex.equipment?.includes("machine"));
+
+  const didInit = useRef(false);
+  useEffect(() => {
+    if (!didInit.current && sets.length === 0) {
+      didInit.current = true;
+      const fresh = isTime
+        ? { id:Date.now(), seconds:tSecs, effort:5, note:"" }
+        : { id:Date.now(), reps:tReps, weight:ex.workoutWeight??ex.defaultWeight??0, effort:5, note:"" };
+      onUpdate([fresh]);
+    }
+  }, []);
+
+  const addSet = () => {
+    const last = sets[sets.length-1];
+    const fallback = isTime
+      ? { id:Date.now(), seconds:tSecs, effort:5, note:"" }
+      : { id:Date.now(), reps:tReps, weight:ex.workoutWeight??0, effort:5, note:"" };
+    onUpdate([...sets, last?{...last,id:Date.now(),note:""}:fallback]);
+  };
+  const upd = (i,f,v) => onUpdate(sets.map((s,idx)=>idx===i?{...s,[f]:v}:s));
+  const rem = (i) => onUpdate(sets.filter((_,idx)=>idx!==i));
+
+  return (
+    <div style={{ marginTop:10 }}>
+      {sets.map((s,i) => {
+        const hit = isTime?(s.seconds>=tSecs&&tSecs>0):(s.reps>=tReps&&tReps>0);
+        return (
+          <div key={s.id??i} style={{
+            background:C.surface, borderRadius:14, padding:14, marginBottom:10,
+            border:`1px solid ${hit?(color??C.gold)+"88":C.border}`
+          }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                <div style={{
+                  width:26,height:26,borderRadius:"50%",
+                  background:hit?(color??C.gold):C.border,
+                  display:"flex",alignItems:"center",justifyContent:"center",
+                  fontSize:11,fontWeight:700,color:hit?"#fff":C.textSoft,
+                  transition:"all 0.2s"
+                }}>S{i+1}</div>
+                {hit && <span style={{fontSize:11,color:color??C.gold,fontWeight:600}}>✓ Done</span>}
+              </div>
+              <button onClick={()=>rem(i)} style={{background:"none",border:"none",color:C.border,cursor:"pointer",fontSize:20}}>×</button>
+            </div>
+
+            {isTime ? (
+              <div>
+                <FLabel>Seconds{tSecs>0?<span style={{color:C.textSoft,fontWeight:400}}> / {tSecs}s</span>:""}</FLabel>
+                <FStepper value={s.seconds} onChange={v=>upd(i,"seconds",v)} step={5} color={color} />
+              </div>
+            ) : (
+              <div style={{ display:"flex", gap:10 }}>
+                <div style={{ flex:1 }}>
+                  <FLabel>Reps{tReps>0?<span style={{color:C.textSoft,fontWeight:400}}> / {tReps}</span>:""}</FLabel>
+                  <FStepper value={s.reps} onChange={v=>upd(i,"reps",v)} step={1} color={color} />
+                </div>
+                {hasWeight && (
+                  <div style={{ flex:1 }}>
+                    <FLabel>Weight (kg)</FLabel>
+                    <FStepper value={s.weight??0} onChange={v=>upd(i,"weight",v)} step={2.5} color={color} />
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div style={{ marginTop:12 }}>
+              <FLabel>Effort <span style={{color:color??C.gold,fontWeight:500}}>{s.effort}/10</span></FLabel>
+              <ProgressDots value={s.effort} onChange={v=>upd(i,"effort",v)} color={color} />
+            </div>
+
+            <input placeholder="Note..."
+              value={s.note} onChange={e=>upd(i,"note",e.target.value)}
+              style={{
+                background:C.card, border:`1px solid ${C.border}`, borderRadius:10,
+                color:C.text, padding:"9px 12px", fontSize:13, width:"100%",
+                boxSizing:"border-box", outline:"none", marginTop:10,
+                fontFamily:"'DM Sans',sans-serif"
+              }}
+            />
+          </div>
+        );
+      })}
+      <button onClick={addSet} style={{
+        width:"100%", padding:"12px", borderRadius:12,
+        border:`1.5px dashed ${(color??C.gold)}88`, background:`${(color??C.gold)}0a`,
+        color:color??C.gold, cursor:"pointer", fontSize:13, fontWeight:600,
+        fontFamily:"'DM Sans',sans-serif"
+      }}>
+        + Add Set {tSets>0?`(${sets.length}/${tSets})`:""}
+      </button>
+    </div>
+  );
+}
+
+function ExerciseCard({ ex, sets, onUpdate, color, drPhase }) {
+  const [open, setOpen] = useState(false);
+  const done = sets.length>0 && sets.some(s=>ex.type==="time"?(s.seconds??0)>0:(s.reps??0)>0);
+  const pills = sets.filter(s=>ex.type==="time"?(s.seconds??0)>0:(s.reps??0)>0).map((s,i)=>(
+    <span key={i} style={{
+      fontSize:11,padding:"2px 8px",borderRadius:8,
+      background:`${color??C.gold}18`,color:color??C.gold,fontWeight:600
+    }}>
+      {ex.type==="time"?`${s.seconds}s`:`${s.reps}${(s.weight??0)>0?`@${s.weight}kg`:""}`}
+    </span>
+  ));
+
+  return (
+    <div style={{ marginBottom:10 }}>
+      <button onClick={()=>setOpen(o=>!o)} style={{
+        width:"100%", background:done?`${color??C.gold}0d`:C.card,
+        border:`1px solid ${done?(color??C.gold)+"44":C.border}`,
+        borderRadius:14, padding:"14px 16px", cursor:"pointer",
+        display:"flex", alignItems:"flex-start", gap:12, textAlign:"left",
+        boxShadow:"0 1px 3px rgba(44,35,22,0.04)"
+      }}>
+        <div style={{
+          width:8,height:8,borderRadius:"50%",marginTop:6,flexShrink:0,
+          background:done?(color??C.gold):C.border,
+          boxShadow:done?`0 0 8px ${(color??C.gold)}88`:"none"
+        }} />
+        <div style={{ flex:1,minWidth:0 }}>
+          <div style={{ color:C.text,fontSize:15,fontWeight:600,
+            fontFamily:"'DM Sans',sans-serif",lineHeight:1.25 }}>{ex.name}</div>
+          <div style={{ color:C.textSoft,fontSize:12,marginTop:3,fontFamily:"'DM Sans',sans-serif" }}>
+            {ex.type==="time"
+              ?`${ex.workoutSets??ex.sets} sets · ${ex.workoutSecs??ex.defaultSecs}s`
+              :`${ex.workoutSets??ex.sets} sets · ${ex.workoutReps??ex.defaultReps} reps${(ex.workoutWeight??0)>0?` · ${ex.workoutWeight}kg`:""}`}
+          </div>
+          {pills.length>0 && <div style={{ display:"flex",gap:4,marginTop:6,flexWrap:"wrap" }}>{pills}</div>}
+        </div>
+        <span style={{ color:C.border,fontSize:13 }}>{open?"▲":"▼"}</span>
+      </button>
+
+      {open && (
+        <div style={{ padding:"4px 2px 2px" }}>
+          {ex.note && (
+            <div style={{
+              background:`${C.gold}0d`, border:`1px solid ${C.gold}33`,
+              borderRadius:10, padding:"10px 14px", marginBottom:10
+            }}>
+              <span style={{ fontSize:10,color:C.gold,fontWeight:700,letterSpacing:1.5 }}>FORM · </span>
+              <span style={{ fontSize:12,color:C.textMid,lineHeight:1.6 }}>{ex.note}</span>
+            </div>
+          )}
+          {ex.drSafe && ex.drPhase <= 2 && (
+            <div style={{
+              background:`${C.sage}0d`, border:`1px solid ${C.sage}44`,
+              borderRadius:10, padding:"8px 14px", marginBottom:10,
+              display:"flex", alignItems:"center", gap:8
+            }}>
+              <span style={{ fontSize:10,color:C.sage,fontWeight:700 }}>✓ CORE-SAFE</span>
+              <span style={{ fontSize:11,color:C.sage }}>DR-friendly exercise</span>
+            </div>
+          )}
+          <ExerciseLogger ex={ex} sets={sets} onUpdate={onUpdate} color={color} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── VIEWS ────────────────────────────────────────────────────────────────────
+
+function WorkoutGeneratorView({ workoutLog, setWorkoutLog, drPhase }) {
+  const [selectedGroup, setSelectedGroup] = useState(null);
+  const [selectedDuration, setSelectedDuration] = useState(null);
+  const [currentWorkout, setCurrentWorkout] = useState(null);
+  const todayKey = useMemo(()=>new Date().toISOString().split("T")[0],[]);
+  const todayLog = workoutLog?.[todayKey] ?? {};
+
+  const generate = () => {
+    if (!selectedGroup || !selectedDuration) return;
+    const dur = DURATIONS.find(d=>d.mins===selectedDuration);
+    setCurrentWorkout(generateWorkout(selectedGroup, dur, drPhase));
+  };
+
+  const updateExercise = useCallback((exId, sets) => {
+    setWorkoutLog(prev => ({
+      ...prev,
+      [todayKey]: { ...(prev[todayKey]??{}), [exId]: sets }
+    }));
+  }, [todayKey, setWorkoutLog]);
+
+  const group = MUSCLE_GROUPS.find(g=>g.id===selectedGroup);
+  const completedCount = currentWorkout?.exercises.filter(ex => {
+    const s = todayLog[ex.id]??[];
+    return s.some(set=>ex.type==="time"?(set.seconds??0)>0:(set.reps??0)>0);
+  }).length ?? 0;
+
+  if (currentWorkout) {
+    return (
+      <div style={{ paddingBottom:90 }}>
+        {/* Workout header */}
+        <div style={{ padding:"16px 18px 14px", borderBottom:`1px solid ${C.border}` }}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+            <div>
+              <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:26, fontWeight:600, color:C.text, lineHeight:1 }}>
+                {group?.label} Day
+              </div>
+              <div style={{ fontSize:11, color:C.textSoft, marginTop:4, letterSpacing:1,
+                fontFamily:"'DM Sans',sans-serif" }}>
+                {currentWorkout.duration} MIN · {currentWorkout.exercises.length} EXERCISES
+              </div>
+            </div>
+            <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:6 }}>
+              {completedCount > 0 && (
+                <div style={{ background:`${group?.color??C.gold}18`,
+                  border:`1px solid ${group?.color??C.gold}44`,
+                  borderRadius:10, padding:"5px 12px", textAlign:"center" }}>
+                  <div style={{ fontSize:16,fontWeight:700,color:group?.color??C.gold }}>{completedCount}/{currentWorkout.exercises.length}</div>
+                  <div style={{ fontSize:9,color:C.textSoft,letterSpacing:1 }}>DONE</div>
+                </div>
+              )}
+              <button onClick={()=>setCurrentWorkout(null)} style={{
+                background:"none", border:`1px solid ${C.border}`,
+                borderRadius:8, color:C.textSoft, cursor:"pointer",
+                fontSize:11, padding:"4px 10px", fontFamily:"'DM Sans',sans-serif"
+              }}>← Change</button>
+            </div>
+          </div>
+        </div>
+
+        {/* Cardio warm-up */}
+        {currentWorkout.cardio && (
+          <div style={{ margin:"14px 18px 0" }}>
+            <FLabel color={C.rose}>CARDIO WARM-UP</FLabel>
+            <ExerciseCard
+              ex={currentWorkout.cardio}
+              sets={todayLog[currentWorkout.cardio.id]??[]}
+              onUpdate={s=>updateExercise(currentWorkout.cardio.id,s)}
+              color={C.rose}
+              drPhase={drPhase}
+            />
+          </div>
+        )}
+
+        {/* Main exercises */}
+        <div style={{ padding:"14px 18px 0" }}>
+          <FLabel>MAIN WORKOUT</FLabel>
+          {currentWorkout.exercises.map(ex => (
+            <ExerciseCard key={ex.id}
+              ex={ex}
+              sets={todayLog[ex.id]??[]}
+              onUpdate={s=>updateExercise(ex.id,s)}
+              color={group?.color??C.gold}
+              drPhase={drPhase}
+            />
+          ))}
+        </div>
+
+        {/* Generate new */}
+        <div style={{ padding:"8px 18px" }}>
+          <FButton onClick={generate} variant="outline" color={group?.color??C.gold}
+            style={{ width:"100%" }}>
+            ↻ Generate New Workout
+          </FButton>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding:"18px 18px 90px" }}>
+      {/* Header */}
+      <div style={{ marginBottom:28 }}>
+        <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:30, fontWeight:600,
+          color:C.text, lineHeight:1.1, marginBottom:6 }}>
+          What are we<br/><em>working today?</em>
+        </div>
+        <div style={{ fontSize:12, color:C.textSoft, fontFamily:"'DM Sans',sans-serif", letterSpacing:0.5 }}>
+          {new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}
+        </div>
+      </div>
+
+      {/* Muscle group selection */}
+      <FLabel>FOCUS AREA</FLabel>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:24 }}>
+        {MUSCLE_GROUPS.map(g => (
+          <button key={g.id} onClick={()=>setSelectedGroup(g.id)} style={{
+            padding:"16px 14px", borderRadius:14, cursor:"pointer", textAlign:"left",
+            border:`1.5px solid ${selectedGroup===g.id?g.color:C.border}`,
+            background:selectedGroup===g.id?`${g.color}12`:C.card,
+            boxShadow:"0 1px 3px rgba(44,35,22,0.05)",
+            transition:"all 0.15s"
+          }}>
+            <div style={{ fontSize:18, marginBottom:6 }}>{g.icon}</div>
+            <div style={{ fontSize:13, fontWeight:600, color:selectedGroup===g.id?g.color:C.text,
+              fontFamily:"'DM Sans',sans-serif" }}>{g.label}</div>
+          </button>
+        ))}
+      </div>
+
+      {/* Duration selection */}
+      <FLabel>SESSION LENGTH</FLabel>
+      <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:28 }}>
+        {DURATIONS.map(d => (
+          <button key={d.mins} onClick={()=>setSelectedDuration(d.mins)} style={{
+            padding:"9px 16px", borderRadius:20, cursor:"pointer",
+            border:`1.5px solid ${selectedDuration===d.mins?C.gold:C.border}`,
+            background:selectedDuration===d.mins?`${C.gold}12`:C.card,
+            fontSize:13, fontWeight:600, color:selectedDuration===d.mins?C.gold:C.textMid,
+            fontFamily:"'DM Sans',sans-serif", transition:"all 0.15s"
+          }}>{d.label}</button>
+        ))}
+      </div>
+
+      {/* Generate button */}
+      <FButton onClick={generate}
+        style={{ width:"100%", padding:"15px",
+          opacity:(selectedGroup&&selectedDuration)?1:0.4,
+          pointerEvents:(selectedGroup&&selectedDuration)?"auto":"none"
+        }}>
+        Build My Workout →
+      </FButton>
+
+      {/* DR notice */}
+      <div style={{
+        marginTop:16, padding:"12px 14px", borderRadius:12,
+        background:`${C.sage}0d`, border:`1px solid ${C.sage}44`
+      }}>
+        <div style={{ fontSize:10, color:C.sage, fontWeight:700, letterSpacing:1.5, marginBottom:4 }}>
+          ✓ CORE-SAFE MODE ACTIVE
+        </div>
+        <div style={{ fontSize:12, color:C.textMid, lineHeight:1.6, fontFamily:"'DM Sans',sans-serif" }}>
+          All workouts are filtered for diastasis recti safety.
+          Core exercises follow Phase {drPhase} progressions.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProgressView({ workoutLog, drPhase }) {
+  const insights = useMemo(()=>analyzeFormaProgress(workoutLog),[workoutLog]);
+
+  // Simple charts
+  const dates = useMemo(()=>Object.keys(workoutLog).sort().slice(-10),[workoutLog]);
+  const sessionData = useMemo(()=>dates.map(dt=>({
+    label:dt.slice(5),
+    value:Object.values(workoutLog[dt]??{}).filter(s=>Array.isArray(s)&&s.length>0).length
+  })),[dates,workoutLog]);
+
+  const totalSessions = Object.keys(workoutLog).length;
+  const totalSets = Object.values(workoutLog).reduce((a,day)=>
+    a+Object.values(day).reduce((b,s)=>b+(Array.isArray(s)?s.length:0),0),0);
+
+  return (
+    <div style={{ padding:"18px 18px 90px" }}>
+      <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:28, fontWeight:600,
+        color:C.text, marginBottom:4 }}>Your Progress</div>
+      <div style={{ fontSize:12,color:C.textSoft,marginBottom:22,fontFamily:"'DM Sans',sans-serif" }}>
+        Building strength, one session at a time
+      </div>
+
+      {/* Stats */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginBottom:20 }}>
+        {[["Sessions",totalSessions],["Total Sets",totalSets],["DR Phase",drPhase]].map(([l,v])=>(
+          <FCard key={l} style={{ padding:"14px 12px", textAlign:"center", marginBottom:0 }}>
+            <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:26, fontWeight:600, color:C.text }}>{v}</div>
+            <div style={{ fontSize:10,color:C.textSoft,marginTop:2,letterSpacing:1,fontFamily:"'DM Sans',sans-serif" }}>{l.toUpperCase()}</div>
+          </FCard>
+        ))}
+      </div>
+
+      {/* Workout frequency chart */}
+      {sessionData.some(d=>d.value>0) && (
+        <FCard style={{ marginBottom:20 }}>
+          <FLabel>WORKOUT FREQUENCY</FLabel>
+          <div style={{ display:"flex", alignItems:"flex-end", gap:3, height:64 }}>
+            {sessionData.map((d,i)=>{
+              const max = Math.max(...sessionData.map(x=>x.value),1);
+              const isLast = i===sessionData.length-1;
+              return (
+                <div key={i} style={{ flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3,justifyContent:"flex-end",height:"100%" }}>
+                  <div style={{ width:"100%",borderRadius:4,background:isLast?C.gold:`${C.gold}44`,
+                    height:`${Math.max((d.value/max)*44,d.value?3:1)}px`,transition:"height 0.35s" }} />
+                  <div style={{ fontSize:9,color:C.textSoft,whiteSpace:"nowrap" }}>{d.label.replace(/^-/,"")}</div>
+                </div>
+              );
+            })}
+          </div>
+        </FCard>
+      )}
+
+      {/* Coach insights */}
+      {insights.length > 0 && (
+        <div>
+          <FLabel>COACH INSIGHTS</FLabel>
+          {insights.map((ins,i) => (
+            <div key={i} style={{
+              background:`${ins.color}0d`, border:`1px solid ${ins.color}44`,
+              borderRadius:14, padding:14, marginBottom:10
+            }}>
+              {ins.type==="milestone" && (
+                <>
+                  <div style={{ fontSize:10,color:ins.color,fontWeight:700,letterSpacing:1.5,marginBottom:6 }}>🎯 MILESTONE</div>
+                  <div style={{ fontSize:14,fontWeight:600,color:C.text,marginBottom:6,fontFamily:"'DM Sans',sans-serif" }}>{ins.title}</div>
+                </>
+              )}
+              {ins.type==="progress" && (
+                <div style={{ fontSize:10,color:ins.color,fontWeight:700,letterSpacing:1.5,marginBottom:6 }}>▲ PROGRESS READY · {ins.exName}</div>
+              )}
+              {ins.type==="plateau" && (
+                <div style={{ fontSize:10,color:ins.color,fontWeight:700,letterSpacing:1.5,marginBottom:6 }}>◆ PLATEAU · {ins.exName}</div>
+              )}
+              <div style={{ fontSize:12,color:C.textMid,lineHeight:1.6,marginBottom:8,fontFamily:"'DM Sans',sans-serif" }}>{ins.message}</div>
+              <div style={{ fontSize:12,color:ins.color,lineHeight:1.5,paddingTop:8,borderTop:`1px solid ${ins.color}22`,fontFamily:"'DM Sans',sans-serif" }}>
+                → {ins.action}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {insights.length===0 && totalSessions>0 && (
+        <FCard style={{ textAlign:"center", padding:"24px 16px" }}>
+          <div style={{ fontSize:12,color:C.textSoft,fontFamily:"'DM Sans',sans-serif" }}>
+            Log 2+ sessions per exercise to unlock coach insights
+          </div>
+        </FCard>
+      )}
+
+      {totalSessions===0 && (
+        <FCard style={{ textAlign:"center", padding:"24px 16px" }}>
+          <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:18, color:C.text, marginBottom:6 }}>
+            Your journey starts today
+          </div>
+          <div style={{ fontSize:12,color:C.textSoft,fontFamily:"'DM Sans',sans-serif" }}>
+            Complete your first workout to see progress insights here
+          </div>
+        </FCard>
+      )}
+    </div>
+  );
+}
+
+function SettingsView({ workoutLog, setWorkoutLog, drPhase, setDrPhase }) {
+  const [token, setToken] = useLocalStorage("forma_dropbox","");
+  const [tokenInput, setTokenInput] = useState("");
+  const [showSetup, setShowSetup] = useState(false);
+  const [syncStatus, setSyncStatus] = useState("idle");
+  const [lastSync, setLastSync] = useLocalStorage("forma_last_sync",null);
+  const [restoreConfirm, setRestoreConfirm] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  const handleSave = async () => {
+    if (!token) return;
+    setSyncStatus("syncing"); setMsg("");
+    try {
+      const ok = await dropboxSave(token,{workoutLog,drPhase,savedAt:new Date().toISOString()});
+      if (ok) { setSyncStatus("ok"); setLastSync(new Date().toISOString()); }
+      else { setSyncStatus("error"); setMsg("Save failed."); }
+    } catch { setSyncStatus("error"); setMsg("Network error."); }
+  };
+
+  const handleRestore = async () => {
+    setSyncStatus("syncing"); setMsg("");
+    try {
+      const data = await dropboxRestore(token);
+      if (!data) { setSyncStatus("error"); setMsg("No backup found."); return; }
+      if (data.workoutLog) setWorkoutLog(data.workoutLog);
+      if (data.drPhase) setDrPhase(data.drPhase);
+      setSyncStatus("ok");
+      setMsg("✓ Restored from "+new Date(data.savedAt).toLocaleDateString());
+      setRestoreConfirm(false);
+    } catch { setSyncStatus("error"); setMsg("Restore failed."); }
+  };
+
+  const connectToken = async () => {
+    if (!tokenInput.trim()) return;
+    setSyncStatus("syncing");
+    try {
+      const r = await fetch("https://api.dropboxapi.com/2/check/user",{
+        method:"POST",headers:{"Authorization":"Bearer "+tokenInput.trim(),"Content-Type":"application/json"},
+        body:JSON.stringify({query:"check"})
+      });
+      if (r.ok) {
+        setToken(tokenInput.trim()); setSyncStatus("ok");
+        setMsg("✓ Dropbox connected!"); setShowSetup(false); setTokenInput("");
+      } else { setSyncStatus("error"); setMsg("Invalid token."); }
+    } catch { setSyncStatus("error"); setMsg("Network error."); }
+  };
+
+  const autoSaveTimer = useRef(null);
+  useEffect(() => {
+    if (!token) return;
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    autoSaveTimer.current = setTimeout(() => {
+      dropboxSave(token,{workoutLog,drPhase,savedAt:new Date().toISOString()})
+        .then(ok => { if(ok){setSyncStatus("ok");setLastSync(new Date().toISOString());} })
+        .catch(()=>{});
+    }, 3000);
+    return ()=>clearTimeout(autoSaveTimer.current);
+  }, [workoutLog, drPhase, token]);
+
+  const statusColor = {idle:C.border,syncing:C.warn,ok:C.sage,error:C.rose}[syncStatus];
+
+  return (
+    <div style={{ padding:"18px 18px 90px" }}>
+      <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:28, fontWeight:600,
+        color:C.text, marginBottom:22 }}>Settings</div>
+
+      {/* DR Phase */}
+      <FCard>
+        <FLabel>DIASTASIS RECTI PHASE</FLabel>
+        <div style={{ fontSize:12,color:C.textMid,lineHeight:1.7,marginBottom:14,fontFamily:"'DM Sans',sans-serif" }}>
+          <strong style={{color:C.text}}>Phase 1</strong> — Early recovery: breathing, dead bug, heel slides<br/>
+          <strong style={{color:C.text}}>Phase 2</strong> — Building strength: bridges, pallof press, most gym exercises<br/>
+          <strong style={{color:C.text}}>Phase 3</strong> — Advanced: full range, running, jumping cleared by physio
+        </div>
+        <div style={{ display:"flex", gap:8 }}>
+          {[1,2,3].map(p => (
+            <button key={p} onClick={()=>setDrPhase(p)} style={{
+              flex:1, padding:"11px", borderRadius:12,
+              border:`1.5px solid ${drPhase===p?C.sage:C.border}`,
+              background:drPhase===p?`${C.sage}18`:C.card,
+              color:drPhase===p?C.sage:C.textSoft,
+              cursor:"pointer", fontSize:14, fontWeight:600,
+              fontFamily:"'DM Sans',sans-serif"
+            }}>Phase {p}</button>
+          ))}
+        </div>
+      </FCard>
+
+      {/* Dropbox */}
+      <FCard>
+        <FLabel>DROPBOX BACKUP</FLabel>
+        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:token?14:0 }}>
+          <div style={{ width:8,height:8,borderRadius:"50%",background:statusColor,flexShrink:0,
+            boxShadow:syncStatus==="ok"?`0 0 8px ${statusColor}`:"none" }} />
+          <div style={{ flex:1 }}>
+            <div style={{ fontSize:12,color:statusColor,fontWeight:600,fontFamily:"'DM Sans',sans-serif" }}>
+              {({idle:"Not configured",syncing:"Syncing...",ok:"Synced ✓",error:"Error"})[syncStatus]}
+            </div>
+            {lastSync&&syncStatus==="ok"&&(
+              <div style={{ fontSize:10,color:C.textSoft,marginTop:1,fontFamily:"'DM Sans',sans-serif" }}>
+                {new Date(lastSync).toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"})} · {new Date(lastSync).toLocaleDateString("en-US",{month:"short",day:"numeric"})}
+              </div>
+            )}
+          </div>
+          <button onClick={()=>setShowSetup(s=>!s)} style={{
+            background:"none",border:`1px solid ${C.border}`,borderRadius:8,
+            color:C.textSoft,cursor:"pointer",fontSize:11,padding:"4px 10px",
+            fontFamily:"'DM Sans',sans-serif"
+          }}>{token?"change":"setup"}</button>
+        </div>
+
+        {showSetup && (
+          <div style={{ background:C.surface,borderRadius:10,padding:14,marginBottom:12 }}>
+            <div style={{ color:C.textMid,fontSize:12,lineHeight:1.8,marginBottom:12,fontFamily:"'DM Sans',sans-serif" }}>
+              <strong style={{color:C.text}}>3-step setup:</strong><br/>
+              1. Go to <strong style={{color:C.gold}}>dropbox.com/developers/apps</strong><br/>
+              2. Create App → Scoped → Full Dropbox → name it <strong style={{color:C.text}}>Forma</strong><br/>
+              3. Permissions: check files.content.write + read → Generate token
+            </div>
+            <input placeholder="Paste Dropbox token..."
+              value={tokenInput} onChange={e=>setTokenInput(e.target.value)}
+              style={{
+                background:C.card,border:`1px solid ${C.border}`,borderRadius:8,
+                color:C.text,padding:"10px 12px",fontSize:12,width:"100%",
+                boxSizing:"border-box",outline:"none",marginBottom:10,
+                fontFamily:"'DM Sans',sans-serif"
+              }}
+            />
+            <FButton onClick={connectToken} style={{ width:"100%" }}>Connect Dropbox</FButton>
+          </div>
+        )}
+
+        {token && !showSetup && (
+          <div style={{ display:"flex", gap:8 }}>
+            <FButton onClick={handleSave} style={{ flex:2 }}>
+              {syncStatus==="syncing"?"Saving...":"↑ Backup"}
+            </FButton>
+            {!restoreConfirm
+              ? <FButton onClick={()=>setRestoreConfirm(true)} variant="outline" color={C.sky} style={{ flex:1 }}>↓ Restore</FButton>
+              : <FButton onClick={handleRestore} variant="outline" color={C.rose} style={{ flex:1 }}>Confirm?</FButton>
+            }
+          </div>
+        )}
+        {msg && <div style={{ fontSize:12,color:msg.startsWith("✓")?C.sage:C.rose,marginTop:10,fontFamily:"'DM Sans',sans-serif" }}>{msg}</div>}
+      </FCard>
+
+      {/* Install */}
+      <FCard>
+        <FLabel>INSTALL ON HOME SCREEN</FLabel>
+        <div style={{ color:C.textMid,fontSize:13,lineHeight:1.8,fontFamily:"'DM Sans',sans-serif" }}>
+          <strong style={{color:C.text}}>iPhone Safari:</strong> Share → "Add to Home Screen"<br/>
+          <strong style={{color:C.text}}>Android Chrome:</strong> ⋮ → "Add to Home screen"
+        </div>
+      </FCard>
+
+      <div style={{ fontSize:11,color:C.border,textAlign:"center",marginTop:20,
+        fontFamily:"'DM Sans',sans-serif",letterSpacing:1 }}>
+        FORMA · All data stays on your device
+      </div>
+    </div>
+  );
+}
+
+// ─── APP ──────────────────────────────────────────────────────────────────────
+
+function App() {
+  const [workoutLog,  setWorkoutLog]  = useLocalStorage("forma_w1", {});
+  const [drPhase,    setDrPhase]     = useLocalStorage("forma_dr", 2);
+  const [tab, setTab] = useState("workout");
+
+  const tabs = [
+    { id:"workout",  label:"TRAIN",    icon:"✦" },
+    { id:"progress", label:"PROGRESS", icon:"▲" },
+    { id:"settings", label:"MORE",     icon:"≡" },
+  ];
+
+  return (
+    <div style={{
+      fontFamily:"'DM Sans','Helvetica Neue',sans-serif",
+      background:C.bg, color:C.text,
+      minHeight:"100svh", maxWidth:480, margin:"0 auto",
+      position:"relative", overflowX:"hidden"
+    }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');
+        *, *::before, *::after { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance:none; margin:0; }
+        input[type=number] { -moz-appearance:textfield; }
+        ::-webkit-scrollbar { display:none; }
+        @keyframes fadeUp { from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;} }
+        .view { animation:fadeUp 0.2s ease both; }
+        button { font-family:'DM Sans',sans-serif; }
+      `}</style>
+
+      {/* Header */}
+      <div style={{
+        position:"sticky", top:0, zIndex:10,
+        background:C.bg, borderBottom:`1px solid ${C.border}`,
+        padding:"14px 18px 12px",
+        display:"flex", justifyContent:"space-between", alignItems:"center"
+      }}>
+        <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:26, fontWeight:600,
+          letterSpacing:1, color:C.text, lineHeight:1 }}>
+          Forma
+        </div>
+        <div style={{ fontSize:11, color:C.textSoft, letterSpacing:0.5 }}>
+          {new Date().toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="view" key={tab} style={{ paddingTop:4 }}>
+        {tab==="workout"  && <WorkoutGeneratorView workoutLog={workoutLog} setWorkoutLog={setWorkoutLog} drPhase={drPhase} />}
+        {tab==="progress" && <ProgressView workoutLog={workoutLog} drPhase={drPhase} />}
+        {tab==="settings" && <SettingsView workoutLog={workoutLog} setWorkoutLog={setWorkoutLog} drPhase={drPhase} setDrPhase={setDrPhase} />}
+      </div>
+
+      {/* Bottom nav */}
+      <div style={{
+        position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)",
+        width:"100%", maxWidth:480,
+        background:"rgba(250,247,242,0.97)", backdropFilter:"blur(12px)",
+        borderTop:`1px solid ${C.border}`,
+        display:"flex",
+        paddingBottom:"max(10px, env(safe-area-inset-bottom))",
+        paddingTop:8, zIndex:20
+      }}>
+        {tabs.map(t => (
+          <button key={t.id} onClick={()=>setTab(t.id)} style={{
+            flex:1, background:"none", border:"none", cursor:"pointer",
+            display:"flex", flexDirection:"column", alignItems:"center", gap:4,
+            color: tab===t.id ? C.gold : C.border,
+            padding:"2px 4px", transition:"color 0.12s"
+          }}>
+            <span style={{ fontSize:17, lineHeight:1 }}>{t.icon}</span>
+            <span style={{ fontSize:10, letterSpacing:1.5, fontWeight:600 }}>{t.label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(React.createElement(App));
+  </script>
+</body>
+</html>
