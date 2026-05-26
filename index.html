@@ -945,6 +945,74 @@ function ExerciseCard({ ex, sets, onUpdate, color, drPhase }) {
 
 // ─── VIEWS ────────────────────────────────────────────────────────────────────
 
+// Exercise swap picker
+function ExerciseSwapPicker({ currentEx, drPhase, onSelect, onClose, color }) {
+  const pool = ALL_EX.filter(ex =>
+    ex.category === currentEx.category &&
+    ex.drSafe && ex.drPhase <= drPhase &&
+    ex.id !== currentEx.id
+  );
+  return (
+    <div style={{
+      background:C.surface, border:`1px solid ${color??C.gold}44`,
+      borderRadius:14, padding:14, marginBottom:10
+    }}>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
+        <FLabel style={{ marginBottom:0 }}>SWAP EXERCISE</FLabel>
+        <button onClick={onClose} style={{ background:"none", border:"none", color:C.textSoft, cursor:"pointer", fontSize:18 }}>x</button>
+      </div>
+      {pool.length === 0 && (
+        <div style={{ color:C.textSoft, fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>
+          No other exercises available at your current DR phase.
+        </div>
+      )}
+      {pool.map(ex => (
+        <button key={ex.id} onClick={() => onSelect(ex)} style={{
+          display:"flex", alignItems:"center", gap:12, width:"100%",
+          background:"none", border:"none", padding:"11px 4px",
+          borderBottom:`1px solid ${C.border}`, cursor:"pointer", textAlign:"left"
+        }}>
+          <div style={{ width:8, height:8, borderRadius:"50%", flexShrink:0, background:color??C.gold, opacity:0.5 }} />
+          <div style={{ flex:1 }}>
+            <div style={{ fontSize:14, fontWeight:600, color:C.text, fontFamily:"'DM Sans',sans-serif" }}>{ex.name}</div>
+            <div style={{ fontSize:11, color:C.textSoft, marginTop:2, fontFamily:"'DM Sans',sans-serif" }}>
+              {ex.type==="time" ? `${ex.sets} sets · ${ex.defaultSecs}s` : `${ex.sets} sets · ${ex.defaultReps} reps`}
+              {ex.drPhase <= 1 && <span style={{ color:C.sage, marginLeft:6 }}>&#10003; Phase 1</span>}
+            </div>
+          </div>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// Swappable exercise card
+function SwappableExerciseCard({ ex: initialEx, sets, onUpdate, color, drPhase, workoutSets, workoutReps, workoutSecs, workoutWeight }) {
+  const [ex, setEx] = useState(initialEx);
+  const [showSwap, setShowSwap] = useState(false);
+  const activeEx = {
+    ...ex,
+    workoutSets: workoutSets ?? ex.sets ?? 3,
+    workoutReps: workoutReps ?? ex.defaultReps ?? null,
+    workoutSecs: workoutSecs ?? ex.defaultSecs ?? null,
+    workoutWeight: workoutWeight ?? ex.defaultWeight ?? 0,
+  };
+  const handleSwap = (newEx) => { setEx(newEx); setShowSwap(false); onUpdate([]); };
+  return (
+    <div style={{ marginBottom:10 }}>
+      <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:4 }}>
+        <button onClick={() => setShowSwap(s => !s)} style={{
+          background:"none", border:`1px dashed ${color??C.gold}66`,
+          borderRadius:8, color:color??C.gold, cursor:"pointer",
+          fontSize:11, padding:"3px 10px", fontFamily:"'DM Sans',sans-serif", fontWeight:600
+        }}>{showSwap ? "Cancel" : "↔ Swap"}</button>
+      </div>
+      {showSwap && <ExerciseSwapPicker currentEx={ex} drPhase={drPhase} onSelect={handleSwap} onClose={() => setShowSwap(false)} color={color} />}
+      <ExerciseCard ex={activeEx} sets={sets} onUpdate={onUpdate} color={color} drPhase={drPhase} />
+    </div>
+  );
+}
+
 function WorkoutGeneratorView({ workoutLog, setWorkoutLog, drPhase }) {
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [selectedDuration, setSelectedDuration] = useState(null);
@@ -954,17 +1022,56 @@ function WorkoutGeneratorView({ workoutLog, setWorkoutLog, drPhase }) {
 
   const generate = () => {
     if (!selectedGroup || !selectedDuration) return;
+    if (selectedGroup === "cardio") {
+      setCurrentWorkout({ muscleGroup:"cardio", exercises:[], cardio:null, duration:selectedDuration });
+      return;
+    }
     const dur = DURATIONS.find(d=>d.mins===selectedDuration);
     setCurrentWorkout(generateWorkout(selectedGroup, dur, drPhase));
   };
 
   const updateExercise = useCallback((exId, sets) => {
-    setWorkoutLog(prev => ({
-      ...prev,
-      [todayKey]: { ...(prev[todayKey]??{}), [exId]: sets }
-    }));
+    setWorkoutLog(prev => ({ ...prev, [todayKey]: { ...(prev[todayKey]??{}), [exId]: sets } }));
   }, [todayKey, setWorkoutLog]);
 
+  // CARDIO PICKER
+  if (currentWorkout?.muscleGroup === "cardio") {
+    const cardioPool = ALL_EX.filter(ex =>
+      ex.category === "cardio" && ex.drSafe && ex.drPhase <= drPhase && ex.type === "time"
+    );
+    const dur = selectedDuration ?? 45;
+    return (
+      <div style={{ paddingBottom:90 }}>
+        <div style={{ padding:"16px 18px 14px", borderBottom:`1px solid ${C.border}` }}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+            <div>
+              <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:26, fontWeight:600, color:C.text }}>Cardio</div>
+              <div style={{ fontSize:11, color:C.textSoft, marginTop:4, letterSpacing:1, fontFamily:"'DM Sans',sans-serif" }}>
+                {dur} MIN · TAP ANY TO LOG
+              </div>
+            </div>
+            <button onClick={()=>setCurrentWorkout(null)} style={{
+              background:"none", border:`1px solid ${C.border}`, borderRadius:8,
+              color:C.textSoft, cursor:"pointer", fontSize:11, padding:"4px 10px", fontFamily:"'DM Sans',sans-serif"
+            }}>← Back</button>
+          </div>
+        </div>
+        <div style={{ padding:"14px 18px 0" }}>
+          <FLabel color={C.rose}>CHOOSE YOUR CARDIO</FLabel>
+          {cardioPool.map(ex => {
+            const activeEx = { ...ex, workoutSets:1, workoutReps:null, workoutSecs:dur*60, workoutWeight:0 };
+            return (
+              <ExerciseCard key={ex.id} ex={activeEx}
+                sets={todayLog[ex.id]??[]} onUpdate={s=>updateExercise(ex.id,s)}
+                color={C.rose} drPhase={drPhase} />
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // REGULAR WORKOUT
   if (currentWorkout) {
     const muscleGroup = currentWorkout.muscleGroup;
     const group = MUSCLE_GROUPS.find(g=>g.id===muscleGroup);
@@ -972,83 +1079,55 @@ function WorkoutGeneratorView({ workoutLog, setWorkoutLog, drPhase }) {
       const s = todayLog[ex.id]??[];
       return s.some(set=>ex.type==="time"?(set.seconds??0)>0:(set.reps??0)>0);
     }).length ?? 0;
-    if (!currentWorkout.exercises?.length) {
-      return (
-        <div style={{ padding:"40px 18px", textAlign:"center" }}>
-          <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:22, color:C.text, marginBottom:12 }}>
-            No exercises available
-          </div>
-          <div style={{ fontSize:13, color:C.textSoft, marginBottom:20, fontFamily:"'DM Sans',sans-serif" }}>
-            No cardio exercises match your current DR phase. Try upgrading your phase in Settings.
-          </div>
-          <FButton onClick={()=>setCurrentWorkout(null)} variant="outline">← Back</FButton>
-        </div>
-      );
-    }
     return (
       <div style={{ paddingBottom:90 }}>
-        {/* Workout header */}
         <div style={{ padding:"16px 18px 14px", borderBottom:`1px solid ${C.border}` }}>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
             <div>
               <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:26, fontWeight:600, color:C.text, lineHeight:1 }}>
-                {muscleGroup === "cardio" ? "Cardio Session" : `${group?.label} Day`}
+                {group?.label} Day
               </div>
-              <div style={{ fontSize:11, color:C.textSoft, marginTop:4, letterSpacing:1,
-                fontFamily:"'DM Sans',sans-serif" }}>
+              <div style={{ fontSize:11, color:C.textSoft, marginTop:4, letterSpacing:1, fontFamily:"'DM Sans',sans-serif" }}>
                 {currentWorkout.duration} MIN · {currentWorkout.exercises.length} EXERCISES
               </div>
             </div>
             <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:6 }}>
               {completedCount > 0 && (
-                <div style={{ background:`${group?.color??C.gold}18`,
-                  border:`1px solid ${group?.color??C.gold}44`,
+                <div style={{ background:`${group?.color??C.gold}18`, border:`1px solid ${group?.color??C.gold}44`,
                   borderRadius:10, padding:"5px 12px", textAlign:"center" }}>
-                  <div style={{ fontSize:16,fontWeight:700,color:group?.color??C.gold }}>{completedCount}/{currentWorkout.exercises.length}</div>
-                  <div style={{ fontSize:9,color:C.textSoft,letterSpacing:1 }}>DONE</div>
+                  <div style={{ fontSize:16, fontWeight:700, color:group?.color??C.gold }}>{completedCount}/{currentWorkout.exercises.length}</div>
+                  <div style={{ fontSize:9, color:C.textSoft, letterSpacing:1 }}>DONE</div>
                 </div>
               )}
               <button onClick={()=>setCurrentWorkout(null)} style={{
-                background:"none", border:`1px solid ${C.border}`,
-                borderRadius:8, color:C.textSoft, cursor:"pointer",
-                fontSize:11, padding:"4px 10px", fontFamily:"'DM Sans',sans-serif"
+                background:"none", border:`1px solid ${C.border}`, borderRadius:8,
+                color:C.textSoft, cursor:"pointer", fontSize:11, padding:"4px 10px", fontFamily:"'DM Sans',sans-serif"
               }}>← Change</button>
             </div>
           </div>
         </div>
-
-        {/* Cardio warm-up */}
         {currentWorkout.cardio && (
           <div style={{ margin:"14px 18px 0" }}>
             <FLabel color={C.rose}>CARDIO WARM-UP</FLabel>
-            <ExerciseCard
-              ex={currentWorkout.cardio}
-              sets={todayLog[currentWorkout.cardio.id]??[]}
-              onUpdate={s=>updateExercise(currentWorkout.cardio.id,s)}
-              color={C.rose}
-              drPhase={drPhase}
-            />
+            <ExerciseCard ex={currentWorkout.cardio} sets={todayLog[currentWorkout.cardio.id]??[]}
+              onUpdate={s=>updateExercise(currentWorkout.cardio.id,s)} color={C.rose} drPhase={drPhase} />
           </div>
         )}
-
-        {/* Main exercises */}
         <div style={{ padding:"14px 18px 0" }}>
-          <FLabel>MAIN WORKOUT</FLabel>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+            <FLabel style={{ marginBottom:0 }}>MAIN WORKOUT</FLabel>
+            <span style={{ fontSize:11, color:C.textSoft, fontFamily:"'DM Sans',sans-serif" }}>↔ Swap to change</span>
+          </div>
           {currentWorkout.exercises.map(ex => (
-            <ExerciseCard key={ex.id}
-              ex={ex}
-              sets={todayLog[ex.id]??[]}
-              onUpdate={s=>updateExercise(ex.id,s)}
-              color={group?.color??C.gold}
-              drPhase={drPhase}
-            />
+            <SwappableExerciseCard key={ex.id} ex={ex}
+              sets={todayLog[ex.id]??[]} onUpdate={s=>updateExercise(ex.id,s)}
+              color={group?.color??C.gold} drPhase={drPhase}
+              workoutSets={ex.workoutSets} workoutReps={ex.workoutReps}
+              workoutSecs={ex.workoutSecs} workoutWeight={ex.workoutWeight} />
           ))}
         </div>
-
-        {/* Generate new */}
         <div style={{ padding:"8px 18px" }}>
-          <FButton onClick={generate} variant="outline" color={group?.color??C.gold}
-            style={{ width:"100%" }}>
+          <FButton onClick={generate} variant="outline" color={group?.color??C.gold} style={{ width:"100%" }}>
             ↻ Generate New Workout
           </FButton>
         </div>
@@ -1056,20 +1135,17 @@ function WorkoutGeneratorView({ workoutLog, setWorkoutLog, drPhase }) {
     );
   }
 
+  // SELECTOR
   return (
     <div style={{ padding:"18px 18px 90px" }}>
-      {/* Header */}
       <div style={{ marginBottom:28 }}>
-        <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:30, fontWeight:600,
-          color:C.text, lineHeight:1.1, marginBottom:6 }}>
+        <div style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:30, fontWeight:600, color:C.text, lineHeight:1.1, marginBottom:6 }}>
           What are we<br/><em>working today?</em>
         </div>
         <div style={{ fontSize:12, color:C.textSoft, fontFamily:"'DM Sans',sans-serif", letterSpacing:0.5 }}>
           {new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}
         </div>
       </div>
-
-      {/* Muscle group selection */}
       <FLabel>FOCUS AREA</FLabel>
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:24 }}>
         {MUSCLE_GROUPS.map(g => (
@@ -1077,17 +1153,14 @@ function WorkoutGeneratorView({ workoutLog, setWorkoutLog, drPhase }) {
             padding:"16px 14px", borderRadius:14, cursor:"pointer", textAlign:"left",
             border:`1.5px solid ${selectedGroup===g.id?g.color:C.border}`,
             background:selectedGroup===g.id?`${g.color}12`:C.card,
-            boxShadow:"0 1px 3px rgba(44,35,22,0.05)",
-            transition:"all 0.15s"
+            boxShadow:"0 1px 3px rgba(44,35,22,0.05)", transition:"all 0.15s"
           }}>
             <div style={{ fontSize:18, marginBottom:6 }}>{g.icon}</div>
-            <div style={{ fontSize:13, fontWeight:600, color:selectedGroup===g.id?g.color:C.text,
-              fontFamily:"'DM Sans',sans-serif" }}>{g.label}</div>
+            <div style={{ fontSize:13, fontWeight:600, color:selectedGroup===g.id?g.color:C.text, fontFamily:"'DM Sans',sans-serif" }}>{g.label}</div>
+            {g.id==="cardio" && <div style={{ fontSize:10, color:C.textSoft, marginTop:3, fontFamily:"'DM Sans',sans-serif" }}>Choose your activity</div>}
           </button>
         ))}
       </div>
-
-      {/* Duration selection */}
       <FLabel>SESSION LENGTH</FLabel>
       <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:28 }}>
         {DURATIONS.map(d => (
@@ -1100,32 +1173,21 @@ function WorkoutGeneratorView({ workoutLog, setWorkoutLog, drPhase }) {
           }}>{d.label}</button>
         ))}
       </div>
-
-      {/* Generate button */}
-      <FButton onClick={generate}
-        style={{ width:"100%", padding:"15px",
-          opacity:(selectedGroup&&selectedDuration)?1:0.4,
-          pointerEvents:(selectedGroup&&selectedDuration)?"auto":"none"
-        }}>
-        Build My Workout →
+      <FButton onClick={generate} style={{ width:"100%", padding:"15px",
+        opacity:(selectedGroup&&selectedDuration)?1:0.4,
+        pointerEvents:(selectedGroup&&selectedDuration)?"auto":"none" }}>
+        {selectedGroup==="cardio" ? "Go to Cardio →" : "Build My Workout →"}
       </FButton>
-
-      {/* DR notice */}
-      <div style={{
-        marginTop:16, padding:"12px 14px", borderRadius:12,
-        background:`${C.sage}0d`, border:`1px solid ${C.sage}44`
-      }}>
-        <div style={{ fontSize:10, color:C.sage, fontWeight:700, letterSpacing:1.5, marginBottom:4 }}>
-          ✓ CORE-SAFE MODE ACTIVE
-        </div>
+      <div style={{ marginTop:16, padding:"12px 14px", borderRadius:12, background:`${C.sage}0d`, border:`1px solid ${C.sage}44` }}>
+        <div style={{ fontSize:10, color:C.sage, fontWeight:700, letterSpacing:1.5, marginBottom:4 }}>&#10003; CORE-SAFE MODE ACTIVE</div>
         <div style={{ fontSize:12, color:C.textMid, lineHeight:1.6, fontFamily:"'DM Sans',sans-serif" }}>
-          All workouts are filtered for diastasis recti safety.
-          Core exercises follow Phase {drPhase} progressions.
+          All workouts filtered for diastasis recti safety. Phase {drPhase} progressions active.
         </div>
       </div>
     </div>
   );
 }
+
 
 function ProgressView({ workoutLog, drPhase }) {
   const insights = useMemo(()=>analyzeFormaProgress(workoutLog),[workoutLog]);
